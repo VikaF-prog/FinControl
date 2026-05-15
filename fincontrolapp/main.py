@@ -192,6 +192,7 @@ def main(page: ft.Page):
                 ("navigation/home.svg",        0),
                 ("navigation/analytics.svg",    1),
                 ("navigation/goals.svg",        2),
+                ("navigation/test.svg",      8), 
                 ("navigation/settings.svg",     3),
             ]
 
@@ -235,7 +236,8 @@ def main(page: ft.Page):
             content.content = pages[index]
             nav_container.content = build_nav(index)
             nav_container.update()
-
+            page.update() 
+            
         uid = page.data["user_id"]
         pages = {
             0: HomePage(page, HomeController(uid)),
