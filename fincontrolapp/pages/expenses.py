@@ -4,7 +4,7 @@ from datetime import date
 from components.base_page import BasePage
 from components.dialogs import close_dialog as _close_dialog
 from components.form_utils import parse_amount, parse_date
-from utils import get_currency_symbol, input_to_rub, format_amount
+from utils import get_currency_symbol, input_to_rub, fmt_tx_amount
 from components.empty_state import empty_state
 
 CATEGORY_ICONS = {
@@ -49,6 +49,7 @@ class ExpensesPage(BasePage):
         expenses = [t for t in expenses_all if self._is_current_month(t["date"])]
         period = self._current_period_label()
         month_total = sum(t["amount"] for t in expenses)
+        sym = get_currency_symbol(self.page_ref)
         title = (
             f"История: {self._selected_category_name}"
             if self._selected_category_name
@@ -80,12 +81,11 @@ class ExpensesPage(BasePage):
                     controls=[
                         ft.Icon(ft.Icons.CALENDAR_MONTH, size=14, color="#6976EB"),
                         ft.Text(f"Период: {period}", size=12,font_family="Montserrat SemiBold", color="#6976EB"),
-                        ft.Text(f"Сумма: {month_total:,.0f} ₽",font_family="Montserrat SemiBold", size=12, color="#483EB7"),
+                        ft.Text(f"Сумма: {month_total:,.0f} {sym}",font_family="Montserrat SemiBold", size=12, color="#483EB7"),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
             ),
-            self._expense_list(expenses),
             ft.GestureDetector(
                 on_tap=self._open_add_dialog,
                 content=ft.Container(
@@ -107,6 +107,7 @@ class ExpensesPage(BasePage):
                     ),
                 ),
             ),
+            self._expense_list(expenses),
         ], spacing=16)
 
     def _category_card(self, category):
@@ -201,7 +202,7 @@ class ExpensesPage(BasePage):
                         ], spacing=12, expand=True),
                         ft.Row([
                             ft.Text(
-                                format_amount(t['amount'], self.page_ref, "− "),
+                                fmt_tx_amount(t, "− "),
                                 color="#483EB7", size=14,font_family="Montserrat SemiBold",
                                 weight=ft.FontWeight.W_600,
                             ),
@@ -454,6 +455,7 @@ class ExpensesPage(BasePage):
                     category_id=int(category_dd.value),
                     description=desc_field.value or None,
                     date=str(parsed_date),
+                    currency=(self.page_ref.data or {}).get("_s_currency", "RUB"),
                 )
             except Exception:
                 self._show_error("Не удалось добавить расход", close_bs=bs)

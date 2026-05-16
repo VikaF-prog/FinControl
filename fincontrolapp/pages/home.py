@@ -4,7 +4,7 @@ import threading
 from datetime import datetime
 from components.base_page import BasePage
 from components.empty_state import empty_state
-from utils import get_currency_symbol, format_amount
+from utils import get_currency_symbol, fmt_tx_amount
 
 
 def _format_time_left(remind_at: str) -> str:
@@ -161,18 +161,21 @@ class HomePage(BasePage):
 
         # Fade out скелетон
         self._body_container.opacity = 0
-        try: 
+        try:
             self._body_container.update()
-        except Exception:  
-            return
+        except Exception:
+            pass  # страница не видима — анимация не нужна, но контент всё равно устанавливаем
 
         # Подменяем контент и fade in
         self._body_container.content = self._real_body(balance, monthly, transactions)
         self._body_container.opacity = 1
-        try: 
+        try:
             self._body_container.update()
-        except Exception:  
-            pass
+        except Exception:
+            try:
+                self.page_ref.update()
+            except Exception:
+                pass
 
     # ── Real content ──────────────────────────────────────────────────────────
 
@@ -517,7 +520,7 @@ class HomePage(BasePage):
                                 ], spacing=2),
                             ], spacing=12),
                             ft.Text(
-                                format_amount(t['amount'], self.page_ref, '+ ' if is_income else '− '),
+                                fmt_tx_amount(t, '+ ' if is_income else '− '),
                                 color="#253A82" if is_income else ft.Colors.with_opacity(0.6, "#FF7E1C"),
                                 size=15, font_family="Montserrat SemiBold",
                                 weight=ft.FontWeight.W_600,

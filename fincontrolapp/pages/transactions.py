@@ -5,7 +5,7 @@ from collections import OrderedDict
 from components.base_page import BasePage
 from components.dialogs import close_dialog as _close_dialog
 from components.form_utils import parse_amount, parse_date
-from utils import format_amount
+from utils import fmt_tx_amount
 
 
 CATEGORY_ICONS = {
@@ -22,10 +22,14 @@ CATEGORY_ICONS = {
 }
 
 
+PAGE_SIZE = 30
+
+
 class TransactionsPage(BasePage):
     def __init__(self, page: ft.Page, ctrl):
         self._ctrl = ctrl
         self._filter = None
+        self._loaded_count = PAGE_SIZE
         super().__init__(page, "Транзакции")
 
     def build_header(self):
@@ -42,32 +46,42 @@ class TransactionsPage(BasePage):
         )
 
     def build_body(self):
-        transactions = self._ctrl.get_transactions(type_=self._filter)
-        return ft.Column([
+        transactions = self._ctrl.get_transactions(
+            type_=self._filter, limit=self._loaded_count + 1
+        )
+        has_more = len(transactions) > self._loaded_count
+        visible = transactions[:self._loaded_count]
+
+        controls = [
             self._filter_row(),
-            self._transactions_list(transactions),
-            ft.GestureDetector(
-                on_tap=self._open_add_dialog,
-                content=ft.Container(
-                    width=float("inf"),
-                    height=48,
-                    border_radius=12,
-                    gradient=ft.RadialGradient(
-                        colors=["#ffffff", "#6C63FF"],
-                        center=ft.Alignment(0, -0.2),
-                        radius=4.0,
-                        stops=[0.0, 0.8],
-                    ),
-                    alignment=ft.Alignment(0, 0),
-                    content=ft.Text(
-                        "＋ Добавить",
-                        color=ft.Colors.BLACK,
-                        font_family="Montserrat SemiBold",
-                        size=16,
-                    ),
+            self._transactions_list(visible),
+        ]
+        if has_more:
+            controls.append(self._load_more_button())
+
+        return ft.Column(controls, spacing=16)
+
+    def _load_more_button(self):
+        return ft.GestureDetector(
+            on_tap=self._load_more,
+            content=ft.Container(
+                width=float("inf"),
+                height=48,
+                border_radius=12,
+                bgcolor=ft.Colors.with_opacity(0.07, "#483EB7"),
+                alignment=ft.Alignment(0, 0),
+                content=ft.Text(
+                    "Загрузить ещё",
+                    color=ft.Colors.with_opacity(0.7, "#253A82"),
+                    font_family="Montserrat SemiBold",
+                    size=16,
                 ),
             ),
-        ], spacing=16)
+        )
+
+    def _load_more(self, e=None):
+        self._loaded_count += PAGE_SIZE
+        self.refresh()
 
     # ── Фильтр ──────────────────────────────────────────────────────────────
 
@@ -115,6 +129,7 @@ class TransactionsPage(BasePage):
 
     def _set_filter(self, value):
         self._filter = value
+        self._loaded_count = PAGE_SIZE
         self.refresh()
 
     # ── Метки дат ────────────────────────────────────────────────────────────
@@ -312,7 +327,7 @@ class TransactionsPage(BasePage):
                             ], spacing=12, expand=True),
                             ft.Row([
                                 ft.Text(
-                                    format_amount(t['amount'], self.page_ref, '+ ' if is_income else '− '),
+                                    fmt_tx_amount(t, '+ ' if is_income else '− '),
                                     color="#253A82" if is_income else ft.Colors.with_opacity(0.6, "#FF7E1C"),
                                     size=14,
                                     font_family="Montserrat SemiBold",
@@ -522,6 +537,7 @@ class TransactionsPage(BasePage):
                     category_id=int(category_dd.value),
                     description=desc_field.value or None,
                     date=str(parsed_date),
+                    currency=(self.page_ref.data or {}).get("_s_currency", "RUB"),
                 )
             except Exception:
                 self._show_error("Не удалось добавить транзакцию", close_bs=bs)
